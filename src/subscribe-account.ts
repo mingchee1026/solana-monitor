@@ -1,16 +1,13 @@
 import { WebSocket } from "ws";
 import dotenv from "dotenv";
+import { AccountMeta } from "./utils/types";
 
 dotenv.config();
 
-export const subscribeAccount = async (accounts: string[]) => {
+const wsSubsMeta: Map<number, string> = new Map();
+
+export const subscribeAccount = async (accounts: AccountMeta[]) => {
   let ws = new WebSocket(process.env.RPC_WEBSOCKET_ENDPOINT);
-
-  //   cron.schedule("*/10 * * * * *", async () => {
-  //     console.log("Running a task every 5 seconds --- updating tokens");
-  //   });
-
-  //   solPrice = await readSolPrice();
 
   ws.on("open", function open() {
     console.log("WebSocket is open");
@@ -34,29 +31,42 @@ export const subscribeAccount = async (accounts: string[]) => {
         return;
       }
 
-      /*
+      // console.log({ message: message.result });
+
       if (message.result !== undefined) {
-        const matchingAccount = this._accountsMeta.find(
-          (a) => a.reqId === message.id
+        const matchingAccount = accounts.find(
+          (account) => account.reqId === message.id
         );
         if (matchingAccount !== undefined) {
-          this._wsSubsMeta.set(message.result, matchingAccount.name);
+          wsSubsMeta.set(message.result, matchingAccount.address);
         }
 
         return;
       }
-        */
 
       if (message.method === "accountNotification") {
-        console.log(JSON.stringify(message, null, 4));
+        // console.log(JSON.stringify(message, null, 4));
 
         const subId = message.params.subscription;
 
-        const accountData = Buffer.from(
-          message.params.result.value.data[0],
-          "base64"
-        );
-        const slot = message.params.result.context.slot;
+        const matchingSubMeta = wsSubsMeta.get(subId);
+
+        if (matchingSubMeta !== undefined) {
+          const accountData = Buffer.from(
+            message.params.result.value.data[0],
+            "base64"
+          );
+          const slot = message.params.result.context.slot;
+          const lamports = message.params.result.value.lamports;
+
+          const notification = {
+            address: matchingSubMeta,
+            balance: lamports,
+            txSlot: slot,
+          };
+
+          console.table(notification);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -75,12 +85,15 @@ export const subscribeAccount = async (accounts: string[]) => {
   });
 };
 
-function subscribeToAccountsNotifications(ws: WebSocket, accounts: any) {
+function subscribeToAccountsNotifications(
+  ws: WebSocket,
+  accounts: AccountMeta[]
+) {
   let idx = 1;
   for (const account of accounts) {
     if (ws.readyState !== ws.OPEN) {
       console.log("warn", "Failed to subscribe to accounts notifications", {
-        account,
+        account: account.address,
         wsState: ws.readyState,
       });
 
@@ -94,7 +107,7 @@ function subscribeToAccountsNotifications(ws: WebSocket, accounts: any) {
       id: idx * 1000,
       method: "accountSubscribe",
       params: [
-        account,
+        account.address,
         {
           encoding: "base64",
           commitment: "confirmed",
@@ -113,10 +126,10 @@ function sendRequest(ws: WebSocket, message: any) {
   if (ws.readyState !== ws.OPEN) {
     return;
   }
-  console.log(message);
+
   ws.send(JSON.stringify(message), (err) => {
     if (err != null) {
-      console.log("warn", `WS send error: ${err}`);
+      console.error("warn", `WS send error: ${err}`);
       ws.terminate();
     }
   });
