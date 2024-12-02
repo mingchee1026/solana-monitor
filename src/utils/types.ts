@@ -37,12 +37,18 @@ export interface TokenMetadata {
 }
 
 export type TokenHolderResult = {
-  owner: string,
-  amount: number,
-}
+  owner: string;
+  amount: number;
+};
 
-export type ApiResponse  = {
+export type ApiResponse = {
   result: {
     token_accounts: TokenHolderResult[];
   };
+};
+
+export interface AccountMeta {
+  telId: string;
+  reqId: number;
+  address: string;
 }
