@@ -6,6 +6,7 @@ import {
 } from "@solana/spl-token";
 import { WebSocket } from "ws";
 import dotenv from "dotenv";
+import { getBalanceChange } from "./utils/getBalanceChange";
 import { extractJupiterTransaction } from "./jupiter";
 import { extractRaydiumTransaction } from "./raydium";
 import { extractPumpFunTransaction } from "./pumpfun";
@@ -75,6 +76,10 @@ export const subscribeTransaction = async (address: string[]) => {
         const amm = getTradeAMM(transaction.meta.logMessages);
 
         // console.log({ amm });
+
+        // Get balance change
+        // console.log({ signature });
+        await getBalanceChange(signature, connection, transaction);
 
         switch (amm) {
           case TransactionType.Jupiter:
