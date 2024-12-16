@@ -1,25 +1,37 @@
-import { subscribeTransaction } from "./subscribe-transaction";
-import { subscribeAccount } from "./subscribe-account";
-import {
-  JUPITER_PROGRAM_ID,
-  RAYDIUM_PROGRAM_ID,
-  PUMP_FUN_MINT_AUTHORITY,
-  PUMP_FUN_PROGRAM_ID,
-  MOONSHOT_MINT_AUTHORITY,
-  MOONSHOT_PROGRAM_ID,
-} from "./config";
+import express, { Application } from "express";
+import dotenv from "dotenv";
+import { db } from "./database";
+import { subscribeToken } from "./background/subscribe-token-price";
+import { aggregateTokenPrice } from "./background/aggregate-token-price";
+import router from "./routers";
 
-subscribeTransaction([
-  // RAYDIUM_PROGRAM_ID,
-  // JUPITER_PROGRAM_ID,
-  // PUMP_FUN_MINT_AUTHORITY,
-  // PUMP_FUN_PROGRAM_ID,
-  MOONSHOT_MINT_AUTHORITY,
-  // MOONSHOT_PROGRAM_ID,
-  //  "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
-  //  "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
-  //  "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
-  //  "FLUXubRmkEi2q6K3Y9kBPg9248ggaZVsoSFhtJHSrm1X",
-  //  "DSwpgjMvXhtGn6BsbqmacdBZyfLj6jSWf3HJpdJtmg6N",
-  //  "GpMZbSM2GgvTKHJirzeGfMFoaZ8UR2X7F4v8vHTvxFbL",
-]);
+dotenv.config();
+
+async function main() {
+  const app: Application = express();
+
+  await db.initDatabase(false);
+
+  subscribeToken([]);
+  aggregateTokenPrice();
+
+  app.use("/api", router);
+
+  app.get("/", (req, res) => {
+    res.send("Hello World");
+  });
+
+  app.get("/health-check", (req, res) => {
+    res.send("Server is Running.");
+  });
+
+  app.listen(Number(process.env.PORT), () => {
+    return console.log(
+      `Express is listening at http://localhost:${process.env.PORT}`
+    );
+  });
+}
+
+main().catch((e) => {
+  console.log(e);
+});
